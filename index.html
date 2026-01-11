@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDN Manager - OVN/OVS</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --sidebar-bg: #2c3e50;
+            --sidebar-hover: #34495e;
+            --sidebar-active: #3498db;
+            --header-height: 60px;
+            --horizon-blue: #006fb8;
+            --horizon-grey: #f5f5f5;
+        }
+
+        body {
+            font-family: "Open Sans", Helvetica, Arial, sans-serif;
+            background-color: var(--horizon-grey);
+            overflow-x: hidden;
+        }
+
+        /* Top Navbar */
+        .navbar-horizon {
+            background-color: #fff;
+            border-bottom: 2px solid #e5e5e5;
+            height: var(--header-height);
+            position: fixed;
+            width: 100%;
+            z-index: 1000;
+            padding: 0 20px;
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            color: #333;
+            letter-spacing: 1px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: var(--header-height);
+            bottom: 0;
+            left: 0;
+            z-index: 100;
+            padding: 0;
+            box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+            background-color: var(--sidebar-bg);
+            width: 240px;
+            transition: all 0.3s;
+        }
+
+        .sidebar-sticky {
+            position: relative;
+            top: 0;
+            height: calc(100vh - var(--header-height));
+            padding-top: .5rem;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        .nav-link {
+            font-weight: 500;
+            color: #bdc3c7;
+            padding: 12px 20px;
+            border-left: 4px solid transparent;
+            cursor: pointer;
+        }
+
+        .nav-link:hover {
+            color: #fff;
+            background-color: var(--sidebar-hover);
+        }
+
+        .nav-link.active {
+            color: #fff;
+            background-color: var(--sidebar-hover);
+            border-left-color: var(--sidebar-active);
+        }
+
+        .nav-link i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 240px;
+            padding-top: calc(var(--header-height) + 20px);
+            padding-left: 30px;
+            padding-right: 30px;
+            transition: all 0.3s;
+        }
+
+        .page-header {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+
+        /* Tables mimicking Horizon */
+        .table-card {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+
+        .table-header {
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #fff;
+        }
+
+        .table thead th {
+            border-bottom: 2px solid #ddd;
+            color: #555;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+        }
+
+        .btn-horizon-primary {
+            background-color: var(--horizon-blue);
+            color: white;
+            border: none;
+        }
+        .btn-horizon-primary:hover {
+            background-color: #005a96;
+            color: white;
+        }
+
+        .status-dot {
+            height: 10px;
+            width: 10px;
+            background-color: #bbb;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .status-active { background-color: #2ecc71; }
+        .status-down { background-color: #e74c3c; }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .sidebar { margin-left: -240px; }
+            .sidebar.active { margin-left: 0; }
+            .main-content { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-horizon d-flex justify-content-between">
+        <div class="d-flex align-items-center">
+            <button class="btn btn-link d-md-none me-3" id="sidebarToggle"><i class="fas fa-bars"></i></button>
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-network-wired me-2"></i>SDN MANAGER
+            </a>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle btn-sm" type="button" id="userMenu" data-bs-toggle="dropdown">
+                    <i class="fas fa-user-circle me-1"></i> Admin
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#" onclick="toggleDemoMode()">Toggle Demo Mode</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#">Sign Out</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-sticky">
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="showSection('overview')">
+                        <i class="fas fa-tachometer-alt"></i> Overview
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="#" onclick="showSection('switches')">
+                        <i class="fas fa-random"></i> Logical Switches
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="showSection('acl')">
+                        <i class="fas fa-shield-alt"></i> Network ACLs
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Alert Box -->
+        <div id="alert-area"></div>
+
+        <!-- Switches Section -->
+        <div id="section-switches">
+            <div class="page-header d-flex justify-content-between align-items-center">
+                <h2>Logical Switches</h2>
+            </div>
+
+            <div class="table-card">
+                <div class="table-header">
+                    <h5 class="m-0">Switches</h5>
+                    <div>
+                        <button class="btn btn-horizon-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createSwitchModal">
+                            <i class="fas fa-plus"></i> Create Switch
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteSelectedSwitches()">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle mb-0" id="switches-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;"><input type="checkbox" id="selectAllSwitches"></th>
+                                <th>Name</th>
+                                <th>Status</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="switches-tbody">
+                            <!-- JS will populate -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ports Section (Contextual) -->
+        <div id="section-ports" style="display: none;">
+            <div class="page-header">
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-outline-secondary btn-sm me-3" onclick="showSection('switches')">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <h2 class="m-0">Manage Ports: <span id="current-switch-name" class="text-primary"></span></h2>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <div class="table-header">
+                    <h5 class="m-0">Logical Ports</h5>
+                    <button class="btn btn-horizon-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createPortModal">
+                        <i class="fas fa-plus"></i> Create Port
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Port Name</th>
+                                <th>Addresses</th>
+                                <th>VLAN Tag</th>
+                                <th>Trunks</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ports-tbody">
+                            <!-- JS will populate -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ACL Section (Placeholder based on API) -->
+        <div id="section-acl" style="display: none;">
+            <div class="page-header">
+                <h2>Network ACLs</h2>
+            </div>
+            <div class="alert alert-info">
+                Select a switch to view its Access Control Lists.
+            </div>
+             <div class="mb-3">
+                <select class="form-select" id="aclSwitchSelect" onchange="loadAcls(this.value)">
+                    <option value="">-- Select Switch --</option>
+                </select>
+            </div>
+            <div class="table-card" id="acl-table-card" style="display:none;">
+                 <div class="table-header">
+                    <h5 class="m-0">ACL Rules</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Priority</th>
+                                <th>Direction</th>
+                                <th>Match</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="acl-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals -->
+
+    <!-- Create Switch Modal -->
+    <div class="modal fade" id="createSwitchModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Logical Switch</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createSwitchForm">
+                        <div class="mb-3">
+                            <label class="form-label">Switch Name</label>
+                            <input type="text" class="form-control" id="switchName" required>
+                            <div class="form-text">Must be unique (e.g. ls-finance)</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="submitCreateSwitch()">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Port Modal -->
+    <div class="modal fade" id="createPortModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Port</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createPortForm">
+                        <div class="alert alert-warning py-2 small">
+                            Backend Convention: Port name will be <strong>&lt;switch&gt;-port&lt;number&gt;</strong>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Port Number</label>
+                            <input type="text" class="form-control" id="portNum" placeholder="e.g. 1" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">MAC Address</label>
+                            <input type="text" class="form-control" id="portMac" placeholder="00:00:00:00:00:01" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">IP Address</label>
+                            <input type="text" class="form-control" id="portIp" placeholder="192.168.1.10" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="submitCreatePort()">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configure VLAN Modal -->
+    <div class="modal fade" id="configPortModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Configure Port VLAN</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="configPortNum">
+                    <p class="text-muted">Configure Access VLAN for <strong id="configPortNameDisplay"></strong>.</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">VLAN Tag</label>
+                        <input type="number" class="form-control" id="vlanTag" placeholder="1-4095">
+                        <div class="form-text">Setting a tag will make this an Access port.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="submitConfigVlan()">Set VLAN</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // CONFIGURATION
+        const API_BASE = 'http://127.0.0.1:5000';
+        // Set to FALSE to try connecting to your local python backend
+        let IS_DEMO_MODE = true; 
+        
+        // STATE
+        let currentSwitchName = null;
+        let switches = [];
+        let ports = {}; // Keyed by switchName
+
+        // INITIALIZATION
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchSwitches();
+            setupEventListeners();
+            
+            if(IS_DEMO_MODE) {
+                showAlert('success', 'Demo Mode Active. Set IS_DEMO_MODE=false in code to connect to 127.0.0.1:5000');
+            }
+        });
+
+        function toggleDemoMode() {
+            IS_DEMO_MODE = !IS_DEMO_MODE;
+            const status = IS_DEMO_MODE ? "Enabled" : "Disabled";
+            showAlert('info', `Demo Mode ${status}. Reloading data...`);
+            switches = [];
+            ports = {};
+            fetchSwitches();
+        }
+
+        function setupEventListeners() {
+            document.getElementById('selectAllSwitches').addEventListener('change', (e) => {
+                const checked = e.target.checked;
+                document.querySelectorAll('.switch-check').forEach(c => c.checked = checked);
+            });
+        }
+
+        function showAlert(type, message) {
+            const alertArea = document.getElementById('alert-area');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            alertArea.appendChild(alertDiv);
+            setTimeout(() => alertDiv.remove(), 5000);
+        }
+
+        // --- API INTERACTIONS ---
+
+        async function apiCall(endpoint, method = 'GET', body = null) {
+            if (IS_DEMO_MODE) {
+                return mockApi(endpoint, method, body);
+            }
+
+            try {
+                const options = {
+                    method,
+                    headers: { 'Content-Type': 'application/json' }
+                };
+                if (body) options.body = JSON.stringify(body);
+                
+                const res = await fetch(`${API_BASE}${endpoint}`, options);
+                // Note: Flask often returns 200 even for logic errors, but check !ok just in case
+                if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
+                return await res.json();
+            } catch (err) {
+                console.error(err);
+                showAlert('danger', `Connection Failed: ${err.message}`);
+                return null;
+            }
+        }
+
+        // --- SWITCH LOGIC ---
+
+        async function fetchSwitches() {
+            // endpoint: GET /switch -> returns ["sw1", "sw2"]
+            const data = await apiCall('/switch');
+            if (data) {
+                // Convert string array to objects for easier handling
+                switches = data.map(name => ({ name: name }));
+                renderSwitches();
+                updateAclDropdown();
+            }
+        }
+
+        async function submitCreateSwitch() {
+            const name = document.getElementById('switchName').value;
+            
+            // endpoint: POST /switch -> {"name": "..."}
+            const res = await apiCall('/switch', 'POST', { name: name });
+            
+            if (res && res.status === "created") {
+                switches.push({ name: name });
+                renderSwitches();
+                updateAclDropdown();
+                bootstrap.Modal.getInstance(document.getElementById('createSwitchModal')).hide();
+                document.getElementById('createSwitchForm').reset();
+                showAlert('success', `Switch '${name}' created.`);
+            }
+        }
+
+        async function deleteSelectedSwitches() {
+            const selected = Array.from(document.querySelectorAll('.switch-check:checked')).map(cb => cb.value);
+            if (selected.length === 0) return;
+
+            if (!confirm(`Delete ${selected.length} switches?`)) return;
+
+            for (const name of selected) {
+                // endpoint: DELETE /switch/<switch_name>
+                await apiCall(`/switch/${name}`, 'DELETE');
+                switches = switches.filter(s => s.name !== name);
+            }
+            renderSwitches();
+            updateAclDropdown();
+            showAlert('success', 'Selected switches deleted.');
+        }
+
+        // --- PORT LOGIC ---
+
+        async function loadPorts(switchName) {
+            currentSwitchName = switchName;
+            document.getElementById('current-switch-name').textContent = switchName;
+            
+            // We need to merge data from two endpoints to get a full view
+            // 1. GET /switch/<name>/vlans -> gets port names, tags, trunks
+            // 2. GET /switch/<name>/ports -> gets port names, addresses (IP/MAC)
+            
+            const [vlanData, portData] = await Promise.all([
+                apiCall(`/switch/${switchName}/vlans`),
+                apiCall(`/switch/${switchName}/ports`)
+            ]);
+
+            if (vlanData && portData) {
+                // Merge strategies: Dict keyed by name
+                const mergedMap = {};
+                
+                portData.forEach(p => {
+                    mergedMap[p.name] = { ...p, vlan_tag: null, trunks: [] };
+                });
+                
+                vlanData.forEach(v => {
+                    if(mergedMap[v.name]) {
+                        mergedMap[v.name].vlan_tag = v.vlan_tag;
+                        mergedMap[v.name].trunks = v.trunks;
+                    } else {
+                        // Should match, but just in case
+                        mergedMap[v.name] = { ...v, addresses: [] };
+                    }
+                });
+
+                ports[switchName] = Object.values(mergedMap);
+                renderPorts(switchName);
+                showSection('ports');
+            }
+        }
+
+        async function submitCreatePort() {
+            const portNum = document.getElementById('portNum').value;
+            const mac = document.getElementById('portMac').value;
+            const ip = document.getElementById('portIp').value;
+            
+            const fullPortName = `${currentSwitchName}-port${portNum}`;
+
+            const payload = {
+                "port-name": fullPortName,
+                "mac-address": mac,
+                "ip": ip
+            };
+
+            // endpoint: POST /switch/<switch_name>/ports
+            const res = await apiCall(`/switch/${currentSwitchName}/ports`, 'POST', payload);
+            
+            if (res && res.status === "created") {
+                await loadPorts(currentSwitchName); // Reload to get fresh data
+                bootstrap.Modal.getInstance(document.getElementById('createPortModal')).hide();
+                document.getElementById('createPortForm').reset();
+                showAlert('success', `Port '${fullPortName}' created.`);
+            }
+        }
+
+        async function deletePort(portName) {
+            if (!confirm(`Delete port ${portName}?`)) return;
+            
+            // Backend expects DELETE /switch/<switch_name>/<port_num>
+            // We must extract the number from "sw1-port1"
+            const parts = portName.split('-port');
+            if (parts.length < 2) {
+                showAlert('warning', 'Port name does not match "-port<num>" convention. Cannot delete via this API.');
+                return;
+            }
+            const portNum = parts[1]; // Get the number suffix
+
+            await apiCall(`/switch/${currentSwitchName}/${portNum}`, 'DELETE');
+            await loadPorts(currentSwitchName);
+        }
+
+        // --- VLAN CONFIG ---
+
+        function openConfigModal(portName, currentTag) {
+            // Extract port number for the API call later
+            const parts = portName.split('-port');
+            if (parts.length < 2) {
+                showAlert('warning', 'Port name does not match "-port<num>" convention. Cannot configure VLAN.');
+                return;
+            }
+            const portNum = parts[1];
+
+            document.getElementById('configPortNum').value = portNum;
+            document.getElementById('configPortNameDisplay').textContent = portName;
+            document.getElementById('vlanTag').value = currentTag || "";
+            
+            new bootstrap.Modal(document.getElementById('configPortModal')).show();
+        }
+
+        async function submitConfigVlan() {
+            const portNum = document.getElementById('configPortNum').value;
+            const vlanTag = document.getElementById('vlanTag').value;
+
+            // endpoint: POST /switch/<switch_name>/<port_num>/vlan
+            const payload = { "vlan": parseInt(vlanTag) };
+            
+            const res = await apiCall(`/switch/${currentSwitchName}/${portNum}/vlan`, 'POST', payload);
+
+            if (res && res.status === "created") {
+                await loadPorts(currentSwitchName);
+                bootstrap.Modal.getInstance(document.getElementById('configPortModal')).hide();
+                showAlert('success', 'VLAN Tag updated.');
+            }
+        }
+
+        // --- ACL LOGIC (Read Only for now) ---
+        function updateAclDropdown() {
+            const select = document.getElementById('aclSwitchSelect');
+            select.innerHTML = '<option value="">-- Select Switch --</option>';
+            switches.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.name;
+                opt.textContent = s.name;
+                select.appendChild(opt);
+            });
+        }
+
+        async function loadAcls(switchName) {
+            if (!switchName) {
+                document.getElementById('acl-table-card').style.display = 'none';
+                return;
+            }
+            // endpoint: GET /switch/<name>/acl
+            const acls = await apiCall(`/switch/${switchName}/acl`);
+            const tbody = document.getElementById('acl-tbody');
+            tbody.innerHTML = '';
+
+            if (acls && acls.length > 0) {
+                acls.forEach(acl => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${acl.priority}</td>
+                        <td>${acl.direction}</td>
+                        <td class="text-monospace small">${acl.match}</td>
+                        <td>${acl.action}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No ACLs found.</td></tr>';
+            }
+            document.getElementById('acl-table-card').style.display = 'block';
+        }
+
+        // --- UI RENDERING ---
+
+        function renderSwitches() {
+            const tbody = document.getElementById('switches-tbody');
+            tbody.innerHTML = '';
+            
+            switches.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><input type="checkbox" class="switch-check" value="${s.name}"></td>
+                    <td><strong>${s.name}</strong></td>
+                    <td><span class="status-dot status-active"></span> Active</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary" onclick="loadPorts('${s.name}')">Manage Ports</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderPorts(switchName) {
+            const tbody = document.getElementById('ports-tbody');
+            tbody.innerHTML = '';
+            
+            const pList = ports[switchName] || [];
+            if(pList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No ports found on this switch.</td></tr>';
+                return;
+            }
+
+            pList.forEach(p => {
+                let vlanInfo = '<span class="badge bg-secondary">Untagged</span>';
+                if(p.vlan_tag) vlanInfo = `<span class="badge bg-primary">VLAN ${p.vlan_tag}</span>`;
+                
+                let trunkInfo = '<span class="text-muted">-</span>';
+                if(p.trunks && p.trunks.length > 0) trunkInfo = `<small>${p.trunks.join(', ')}</small>`;
+
+                let addresses = '<span class="text-muted">-</span>';
+                if(p.addresses && p.addresses.length > 0) {
+                    // Filter out 'dynamic' if present, usually addresses look like "MAC IP"
+                    addresses = p.addresses.join('<br>'); 
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${p.name}</strong></td>
+                    <td class="small font-monospace">${addresses}</td>
+                    <td>${vlanInfo}</td>
+                    <td>${trunkInfo}</td>
+                    <td class="text-end">
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="openConfigModal('${p.name}', '${p.vlan_tag || ''}')">Set VLAN</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deletePort('${p.name}')"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function showSection(section) {
+            document.getElementById('section-switches').style.display = 'none';
+            document.getElementById('section-ports').style.display = 'none';
+            document.getElementById('section-acl').style.display = 'none';
+            
+            if(section === 'overview') section = 'switches';
+            document.getElementById(`section-${section}`).style.display = 'block';
+            
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+            const activeLink = document.querySelector(`a[onclick*="${section}"]`);
+            if(activeLink) activeLink.classList.add('active');
+        }
+
+        // --- MOCK API FOR DEMO ---
+        // Matches the structure of main.py
+        function mockApi(endpoint, method, body) {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    console.log(`[MOCK] ${method} ${endpoint}`, body);
+                    
+                    if (endpoint === '/switch' && method === 'GET') {
+                        // Return list of strings
+                        resolve(["ls-provider", "ls-tenant-A"]);
+                    }
+                    if (method === 'POST' && endpoint === '/switch') {
+                        resolve({ "status": "created", "switch": body.name });
+                    }
+                    if (method === 'DELETE' && endpoint.startsWith('/switch/') && !endpoint.includes('/ports')) {
+                        resolve({ "status": "deleted" });
+                    }
+
+                    // Ports & VLANS
+                    if (method === 'GET' && endpoint.includes('/vlans')) {
+                        // Mock structure from main.py list_switch_vlans
+                        resolve([
+                            { "name": "ls-provider-port1", "vlan_tag": 100, "trunks": null },
+                            { "name": "ls-provider-port2", "vlan_tag": null, "trunks": [200, 300] }
+                        ]);
+                    }
+                    if (method === 'GET' && endpoint.includes('/ports')) {
+                        // Mock structure from main.py list_ports
+                        resolve([
+                            { "name": "ls-provider-port1", "addresses": ["00:aa:bb:cc:dd:01 192.168.1.1"] },
+                            { "name": "ls-provider-port2", "addresses": ["00:aa:bb:cc:dd:02 192.168.1.2"] }
+                        ]);
+                    }
+
+                    if (method === 'POST' && endpoint.includes('/ports') && !endpoint.includes('vlan')) {
+                        resolve({ "status": "created", "port": body["port-name"] });
+                    }
+                    
+                    if (method === 'POST' && endpoint.includes('/vlan')) {
+                        resolve({ "status": "created", "vlan-tag": body.vlan });
+                    }
+                    
+                    if (method === 'GET' && endpoint.includes('/acl')) {
+                        resolve([
+                            { priority: 1001, direction: 'to-lport', match: 'ip4.src == 10.0.0.1', action: 'allow' }
+                        ]);
+                    }
+
+                    resolve(null);
+                }, 300);
+            });
+        }
+    </script>
+</body>
+</html>
