@@ -12,6 +12,12 @@ api = impl_idl.OvnNbApiIdlImpl(c)
 app = Flask(__name__)
 CORS(app)
 
+# ----------------
+# Switch Operations
+# ----------------
+
+# Get Methods
+
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "conected", "db": "ovn-nb"})
@@ -61,6 +67,7 @@ def list_acl(switch_name):
     return jsonify(result)
 
 
+# Post Methods
 
 @app.route("/switch", methods=["POST"])
 def add_switch():
@@ -103,6 +110,7 @@ def add_vlan(switch_name, port_num):
     return jsonify({"status": "created", "switch": switch_name, "port": "port "+port_num, "vlan-tag": data["vlan"]})
 
 
+# Delete Methods
 
 @app.route("/switch/<switch_name>", methods=["DELETE"])
 def del_switch(switch_name):
@@ -128,6 +136,89 @@ def del_acl(switch_name):
 	data["match"]
     ).execute()
     return jsonify({"status": "deleted", "from-switch": switch_name})
+
+
+
+# --------------------
+# Router Operations 
+# --------------------
+
+# Get Methods
+
+@app.route("/router", methods=["GET"])
+def list_router():
+    return jsonify([lr.name for lr in api.lr_list().execute()])
+
+@app.route("/router/<router_name>/ports", methods=["GET"])
+def list_router_ports(router_name):
+    ports = api.lrp_list(router_name).execute()
+    result = []
+    for port in ports:
+        result.append({
+            "name": port.name,
+            "addresses": port.addresses
+        })
+    return jsonify(result)
+
+@app.route("/router/<router_name>/routes", methods=["GET"])
+def list_router_routes(router_name):
+    routes = api.lr_route_list(router_name).execute()
+    result = []
+    for route in routes:
+        result.append({
+            "destination": route.destination,
+            "next_hop": route.next_hop
+        })
+    return jsonify(result)    
+
+# Post Methods
+
+@app.route("/router", methods=["POST"])
+def add_router():
+    data = request.json
+    api.lr_add(data["name"]).execute()
+    return jsonify({"status": "created", "router": data["name"]})
+
+@app.route("/router/<router_name>/ports", methods=["POST"])
+def add_router_port(router_name):
+    data = request.json
+    api.lrp_add(router_name, data["port-name"]).execute()
+    mac=data["mac-address"]
+    ip=data["ip"]
+    api.lrp_set_addresses(
+	data["port-name"],
+	[f"{mac} {ip}"]
+    ).execute()
+    return jsonify({"status": "created", "port": data["port-name"]})
+
+@app.route("/router/<router_name>/routes", methods=["POST"])
+def add_router_route(router_name):
+    data = request.json
+    api.lr_route_add(
+        router_name,
+	data["destination"],
+	data["next-hop"]
+    ).execute()
+    return jsonify({"status": "created", "router": router_name, "destination": data["destination"], "next-hop": data["next-hop"]})
+
+# Delete Methods
+
+@app.route("/router/<router_name>", methods=["DELETE"])
+def del_router(router_name):
+    api.lr_del(router_name).execute()
+    return jsonify({"status": "deleted", "router": router_name})
+
+@app.route("/router/<router_name>/ports", methods=["DELETE"])
+def del_router_port(router_name):
+    data = request.json
+    api.lrp_del(router_name, data["port-name"]).execute()
+    return jsonify({"status": "deleted", "port": data["port-name"]})
+
+@app.route("/router/<router_name>/routes", methods=["DELETE"])
+def del_router_route(router_name):
+    data = request.json
+    api.lr_route_del(router_name, data["destination"]).execute()
+    return jsonify({"status": "deleted", "router": router_name, "destination": data["destination"]})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

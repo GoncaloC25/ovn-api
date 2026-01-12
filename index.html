@@ -152,6 +152,30 @@
         .status-active { background-color: #2ecc71; }
         .status-down { background-color: #e74c3c; }
 
+        /* Overview Cards */
+        .overview-card {
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        .overview-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .overview-icon {
+            font-size: 2.5rem;
+            opacity: 0.2;
+            position: absolute;
+            right: 20px;
+            top: 20px;
+        }
+        .card-stat {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #333;
+        }
+
         /* Mobile Responsive */
         @media (max-width: 768px) {
             .sidebar { margin-left: -240px; }
@@ -200,6 +224,11 @@
                         <i class="fas fa-random"></i> Logical Switches
                     </a>
                 </li>
+                 <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="showSection('routers')">
+                        <i class="fas fa-router"></i> Logical Routers
+                    </a>
+                </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#" onclick="showSection('acl')">
                         <i class="fas fa-shield-alt"></i> Network ACLs
@@ -214,8 +243,91 @@
         <!-- Alert Box -->
         <div id="alert-area"></div>
 
+        <!-- Overview Section -->
+        <div id="section-overview" style="display: none;">
+            <div class="page-header">
+                <h2>System Overview</h2>
+            </div>
+            
+            <div class="row g-4 mb-4">
+                <!-- Status Card -->
+                <div class="col-md-4">
+                    <div class="card overview-card h-100 border-start border-4 border-success">
+                        <div class="card-body">
+                            <h5 class="card-title text-muted text-uppercase small">System Status</h5>
+                            <div class="d-flex align-items-center mt-2">
+                                <div id="health-indicator" class="status-dot status-active" style="width: 15px; height: 15px;"></div>
+                                <span class="ms-2 fw-bold" id="health-text">Checking...</span>
+                            </div>
+                            <p class="text-muted small mt-2 mb-0">Connected to: <span id="db-name">-</span></p>
+                            <i class="fas fa-server overview-icon text-success"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Switches Card -->
+                <div class="col-md-4">
+                    <div class="card overview-card h-100 border-start border-4 border-primary">
+                        <div class="card-body">
+                            <h5 class="card-title text-muted text-uppercase small">Logical Switches</h5>
+                            <div class="card-stat" id="overview-switch-count">-</div>
+                            <a href="#" onclick="showSection('switches')" class="text-decoration-none small">Manage Switches &rarr;</a>
+                            <i class="fas fa-random overview-icon text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Routers Card -->
+                <div class="col-md-4">
+                    <div class="card overview-card h-100 border-start border-4 border-warning">
+                        <div class="card-body">
+                            <h5 class="card-title text-muted text-uppercase small">Logical Routers</h5>
+                            <div class="card-stat" id="overview-router-count">-</div>
+                            <a href="#" onclick="showSection('routers')" class="text-decoration-none small">Manage Routers &rarr;</a>
+                            <i class="fas fa-router overview-icon text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-white">
+                            <h6 class="mb-0">Quick Actions</h6>
+                        </div>
+                        <div class="list-group list-group-flush">
+                            <button class="list-group-item list-group-item-action" data-bs-toggle="modal" data-bs-target="#createSwitchModal">
+                                <i class="fas fa-plus-circle text-primary me-2"></i> Create New Switch
+                            </button>
+                            <button class="list-group-item list-group-item-action" data-bs-toggle="modal" data-bs-target="#createRouterModal">
+                                <i class="fas fa-plus-circle text-warning me-2"></i> Create New Router
+                            </button>
+                            <button class="list-group-item list-group-item-action" onclick="fetchHealth()">
+                                <i class="fas fa-sync text-secondary me-2"></i> Refresh System Status
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                 <div class="col-md-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-white">
+                            <h6 class="mb-0">Backend Info</h6>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>API Endpoint:</strong> <span class="font-monospace bg-light p-1" id="overview-api-url"></span></p>
+                            <p class="text-muted small">
+                                OVN (Open Virtual Network) is a system to support virtual network abstraction. 
+                                Use the sidebar to manage your Logical Switches, Ports, and ACLs.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Switches Section -->
-        <div id="section-switches">
+        <div id="section-switches" style="display: none;">
             <div class="page-header d-flex justify-content-between align-items-center">
                 <h2>Logical Switches</h2>
             </div>
@@ -250,7 +362,7 @@
             </div>
         </div>
 
-        <!-- Ports Section (Contextual) -->
+        <!-- Ports Section (Contextual for Switch) -->
         <div id="section-ports" style="display: none;">
             <div class="page-header">
                 <div class="d-flex align-items-center">
@@ -283,6 +395,104 @@
                             <!-- JS will populate -->
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Routers Section -->
+        <div id="section-routers" style="display: none;">
+            <div class="page-header d-flex justify-content-between align-items-center">
+                <h2>Logical Routers</h2>
+            </div>
+            
+            <div class="table-card">
+                <div class="table-header">
+                    <h5 class="m-0">Routers</h5>
+                    <div>
+                        <button class="btn btn-horizon-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createRouterModal">
+                            <i class="fas fa-plus"></i> Create Router
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteSelectedRouters()">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle mb-0" id="routers-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;"><input type="checkbox" id="selectAllRouters"></th>
+                                <th>Name</th>
+                                <th>Status</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="routers-tbody">
+                            <!-- JS will populate -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Router Details Section (Ports & Routes) -->
+        <div id="section-router-details" style="display: none;">
+            <div class="page-header">
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-outline-secondary btn-sm me-3" onclick="showSection('routers')">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <h2 class="m-0">Router: <span id="current-router-name" class="text-warning"></span></h2>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Router Ports -->
+                <div class="col-lg-6 mb-4">
+                    <div class="table-card h-100">
+                        <div class="table-header">
+                            <h5 class="m-0">Router Ports</h5>
+                            <button class="btn btn-horizon-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createRouterPortModal">
+                                <i class="fas fa-plus"></i> Add Port
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Address</th>
+                                        <th class="text-end">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="router-ports-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Router Static Routes -->
+                <div class="col-lg-6 mb-4">
+                    <div class="table-card h-100">
+                        <div class="table-header">
+                            <h5 class="m-0">Static Routes</h5>
+                            <button class="btn btn-horizon-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createRouterRouteModal">
+                                <i class="fas fa-plus"></i> Add Route
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Destination</th>
+                                        <th>Next Hop</th>
+                                        <th class="text-end">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="router-routes-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -485,13 +695,96 @@
         </div>
     </div>
 
+    <!-- Create Router Modal -->
+    <div class="modal fade" id="createRouterModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Logical Router</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createRouterForm">
+                        <div class="mb-3">
+                            <label class="form-label">Router Name</label>
+                            <input type="text" class="form-control" id="routerName" required>
+                            <div class="form-text">e.g. lr-core</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="submitCreateRouter()">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Router Port Modal -->
+    <div class="modal fade" id="createRouterPortModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Router Port</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createRouterPortForm">
+                        <div class="mb-3">
+                            <label class="form-label">Port Name</label>
+                            <input type="text" class="form-control" id="routerPortName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">MAC Address</label>
+                            <input type="text" class="form-control" id="routerPortMac" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">IP Address (CIDR)</label>
+                            <input type="text" class="form-control" id="routerPortIp" placeholder="192.168.10.1/24" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="submitCreateRouterPort()">Add Port</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Router Route Modal -->
+    <div class="modal fade" id="createRouterRouteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Static Route</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createRouterRouteForm">
+                        <div class="mb-3">
+                            <label class="form-label">Destination CIDR</label>
+                            <input type="text" class="form-control" id="routeDestination" placeholder="0.0.0.0/0" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Next Hop IP</label>
+                            <input type="text" class="form-control" id="routeNextHop" placeholder="192.168.1.1" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="submitCreateRouterRoute()">Add Route</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
         // --- DYNAMIC API CONFIGURATION ---
-        // Dynamically set API URL based on where the browser is running
-        // If loaded from file://, default to localhost. Otherwise use hostname.
         const hostname = window.location.hostname || '127.0.0.1';
         const API_BASE = `http://${hostname}:5000`;
         
@@ -502,11 +795,17 @@
         let switches = [];
         let ports = {}; // Keyed by switchName
 
+        let currentRouterName = null;
+        let routers = [];
+        let routerPorts = [];
+        let routerRoutes = [];
+
         // INITIALIZATION
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('api-target-display').textContent = API_BASE;
-            fetchSwitches();
-            setupEventListeners();
+            
+            // Initial Data Load
+            showSection('overview'); 
             
             if(IS_DEMO_MODE) {
                 showAlert('success', 'Demo Mode Active. Set IS_DEMO_MODE=false in code to connect to API');
@@ -519,13 +818,17 @@
             showAlert('info', `Demo Mode ${status}. Reloading data...`);
             switches = [];
             ports = {};
-            fetchSwitches();
+            showSection('overview');
         }
 
         function setupEventListeners() {
             document.getElementById('selectAllSwitches').addEventListener('change', (e) => {
                 const checked = e.target.checked;
                 document.querySelectorAll('.switch-check').forEach(c => c.checked = checked);
+            });
+            document.getElementById('selectAllRouters').addEventListener('change', (e) => {
+                const checked = e.target.checked;
+                document.querySelectorAll('.router-check').forEach(c => c.checked = checked);
             });
         }
 
@@ -555,14 +858,17 @@
                 };
                 if (body) options.body = JSON.stringify(body);
                 
-                const res = await fetch(`${API_BASE}${endpoint}`, options);
-                // Note: Flask often returns 200 even for logic errors, but check !ok just in case
+                // Handle deleting routes with slashes (CIDR)
+                // Browsers usually handle encoding, but to be safe for backend path parsing
+                const url = `${API_BASE}${endpoint}`;
+                
+                const res = await fetch(url, options);
                 if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
                 return await res.json();
             } catch (err) {
                 console.error(err);
                 if (err.name === 'TypeError' && err.message.includes('NetworkError')) {
-                    showAlert('danger', `Network Error: Cannot reach ${API_BASE}. Ensure backend is running and firewall port 5000 is open.`);
+                    showAlert('danger', `Network Error: Cannot reach ${API_BASE}. Ensure backend is running.`);
                 } else if (err.message.includes('fetch')) {
                     showAlert('danger', `Connection Failed: Is the backend running at ${API_BASE}?`);
                 } else {
@@ -572,13 +878,62 @@
             }
         }
 
+        // --- OVERVIEW LOGIC ---
+
+        async function loadOverview() {
+            document.getElementById('overview-api-url').textContent = API_BASE;
+            
+            await fetchHealth();
+
+            // Fetch Switches
+            const data = await apiCall('/switch');
+            if (data) {
+                switches = data.map(name => ({ name: name }));
+                document.getElementById('overview-switch-count').textContent = switches.length;
+            } else {
+                document.getElementById('overview-switch-count').textContent = "Err";
+            }
+
+            // Fetch Routers
+            try {
+                const rData = await apiCall('/router');
+                if (rData) {
+                     document.getElementById('overview-router-count').textContent = Array.isArray(rData) ? rData.length : "0";
+                } else {
+                     document.getElementById('overview-router-count').textContent = "0";
+                }
+            } catch (e) {
+                document.getElementById('overview-router-count').textContent = "N/A";
+            }
+        }
+
+        async function fetchHealth() {
+            const elText = document.getElementById('health-text');
+            const elDot = document.getElementById('health-indicator');
+            const elDb = document.getElementById('db-name');
+            
+            elText.textContent = "Checking...";
+            elDot.className = "status-dot";
+
+            const res = await apiCall('/health');
+            if (res && res.status === "conected") { 
+                elText.textContent = "Online";
+                elDot.className = "status-dot status-active";
+                elText.className = "ms-2 fw-bold text-success";
+                elDb.textContent = res.db;
+            } else {
+                elText.textContent = "Offline / Error";
+                elDot.className = "status-dot status-down";
+                elText.className = "ms-2 fw-bold text-danger";
+                elDb.textContent = "Unknown";
+            }
+        }
+
         // --- SWITCH LOGIC ---
 
         async function fetchSwitches() {
-            // endpoint: GET /switch -> returns ["sw1", "sw2"]
             const data = await apiCall('/switch');
             if (data) {
-                // Convert string array to objects for easier handling
                 switches = data.map(name => ({ name: name }));
                 renderSwitches();
                 updateAclDropdown();
@@ -587,10 +942,7 @@
 
         async function submitCreateSwitch() {
             const name = document.getElementById('switchName').value;
-            
-            // endpoint: POST /switch -> {"name": "..."}
             const res = await apiCall('/switch', 'POST', { name: name });
-            
             if (res && res.status === "created") {
                 switches.push({ name: name });
                 renderSwitches();
@@ -604,11 +956,9 @@
         async function deleteSelectedSwitches() {
             const selected = Array.from(document.querySelectorAll('.switch-check:checked')).map(cb => cb.value);
             if (selected.length === 0) return;
-
             if (!confirm(`Delete ${selected.length} switches?`)) return;
 
             for (const name of selected) {
-                // endpoint: DELETE /switch/<switch_name>
                 await apiCall(`/switch/${name}`, 'DELETE');
                 switches = switches.filter(s => s.name !== name);
             }
@@ -617,15 +967,11 @@
             showAlert('success', 'Selected switches deleted.');
         }
 
-        // --- PORT LOGIC ---
+        // --- PORT LOGIC (SWITCHES) ---
 
         async function loadPorts(switchName) {
             currentSwitchName = switchName;
             document.getElementById('current-switch-name').textContent = switchName;
-            
-            // We need to merge data from two endpoints to get a full view
-            // 1. GET /switch/<name>/vlans -> gets port names, tags, trunks
-            // 2. GET /switch/<name>/ports -> gets port names, addresses (IP/MAC)
             
             const [vlanData, portData] = await Promise.all([
                 apiCall(`/switch/${switchName}/vlans`),
@@ -633,19 +979,15 @@
             ]);
 
             if (vlanData && portData) {
-                // Merge strategies: Dict keyed by name
                 const mergedMap = {};
-                
                 portData.forEach(p => {
                     mergedMap[p.name] = { ...p, vlan_tag: null, trunks: [] };
                 });
-                
                 vlanData.forEach(v => {
                     if(mergedMap[v.name]) {
                         mergedMap[v.name].vlan_tag = v.vlan_tag;
                         mergedMap[v.name].trunks = v.trunks;
                     } else {
-                        // Should match, but just in case
                         mergedMap[v.name] = { ...v, addresses: [] };
                     }
                 });
@@ -662,18 +1004,11 @@
             const ip = document.getElementById('portIp').value;
             
             const fullPortName = `${currentSwitchName}-port${portNum}`;
+            const payload = { "port-name": fullPortName, "mac-address": mac, "ip": ip };
 
-            const payload = {
-                "port-name": fullPortName,
-                "mac-address": mac,
-                "ip": ip
-            };
-
-            // endpoint: POST /switch/<switch_name>/ports
             const res = await apiCall(`/switch/${currentSwitchName}/ports`, 'POST', payload);
-            
             if (res && res.status === "created") {
-                await loadPorts(currentSwitchName); // Reload to get fresh data
+                await loadPorts(currentSwitchName);
                 bootstrap.Modal.getInstance(document.getElementById('createPortModal')).hide();
                 document.getElementById('createPortForm').reset();
                 showAlert('success', `Port '${fullPortName}' created.`);
@@ -682,52 +1017,136 @@
 
         async function deletePort(portName) {
             if (!confirm(`Delete port ${portName}?`)) return;
-            
-            // Backend expects DELETE /switch/<switch_name>/<port_num>
-            // We must extract the number from "sw1-port1"
             const parts = portName.split('-port');
-            if (parts.length < 2) {
-                showAlert('warning', 'Port name does not match "-port<num>" convention. Cannot delete via this API.');
-                return;
-            }
-            const portNum = parts[1]; // Get the number suffix
+            if (parts.length < 2) return showAlert('warning', 'Port name invalid for delete.');
+            const portNum = parts[1];
 
             await apiCall(`/switch/${currentSwitchName}/${portNum}`, 'DELETE');
             await loadPorts(currentSwitchName);
         }
 
-        // --- VLAN CONFIG ---
-
-        function openConfigModal(portName, currentTag) {
-            // Extract port number for the API call later
-            const parts = portName.split('-port');
-            if (parts.length < 2) {
-                showAlert('warning', 'Port name does not match "-port<num>" convention. Cannot configure VLAN.');
-                return;
-            }
-            const portNum = parts[1];
-
-            document.getElementById('configPortNum').value = portNum;
-            document.getElementById('configPortNameDisplay').textContent = portName;
-            document.getElementById('vlanTag').value = currentTag || "";
-            
-            new bootstrap.Modal(document.getElementById('configPortModal')).show();
-        }
-
         async function submitConfigVlan() {
             const portNum = document.getElementById('configPortNum').value;
             const vlanTag = document.getElementById('vlanTag').value;
-
-            // endpoint: POST /switch/<switch_name>/<port_num>/vlan
             const payload = { "vlan": parseInt(vlanTag) };
             
             const res = await apiCall(`/switch/${currentSwitchName}/${portNum}/vlan`, 'POST', payload);
-
             if (res && res.status === "created") {
                 await loadPorts(currentSwitchName);
                 bootstrap.Modal.getInstance(document.getElementById('configPortModal')).hide();
                 showAlert('success', 'VLAN Tag updated.');
             }
+        }
+
+        function openConfigModal(portName, currentTag) {
+            const parts = portName.split('-port');
+            if (parts.length < 2) return;
+            const portNum = parts[1];
+            document.getElementById('configPortNum').value = portNum;
+            document.getElementById('configPortNameDisplay').textContent = portName;
+            document.getElementById('vlanTag').value = currentTag || "";
+            new bootstrap.Modal(document.getElementById('configPortModal')).show();
+        }
+
+        // --- ROUTER LOGIC ---
+
+        async function fetchRouters() {
+            const data = await apiCall('/router');
+            if (data) {
+                routers = data.map(name => ({ name: name }));
+                renderRouters();
+            }
+        }
+
+        async function submitCreateRouter() {
+            const name = document.getElementById('routerName').value;
+            const res = await apiCall('/router', 'POST', { name: name });
+            if (res && res.status === "created") {
+                routers.push({ name: name });
+                renderRouters();
+                bootstrap.Modal.getInstance(document.getElementById('createRouterModal')).hide();
+                document.getElementById('createRouterForm').reset();
+                showAlert('success', `Router '${name}' created.`);
+            }
+        }
+
+        async function deleteSelectedRouters() {
+            const selected = Array.from(document.querySelectorAll('.router-check:checked')).map(cb => cb.value);
+            if (selected.length === 0) return;
+            if (!confirm(`Delete ${selected.length} routers?`)) return;
+
+            for (const name of selected) {
+                await apiCall(`/router/${name}`, 'DELETE');
+                routers = routers.filter(r => r.name !== name);
+            }
+            renderRouters();
+            showAlert('success', 'Selected routers deleted.');
+        }
+
+        async function loadRouterDetails(routerName) {
+            currentRouterName = routerName;
+            document.getElementById('current-router-name').textContent = routerName;
+
+            const [portsData, routesData] = await Promise.all([
+                apiCall(`/router/${routerName}/ports`),
+                apiCall(`/router/${routerName}/routes`)
+            ]);
+
+            routerPorts = portsData || [];
+            routerRoutes = routesData || [];
+
+            renderRouterDetails();
+            showSection('router-details');
+        }
+
+        async function submitCreateRouterPort() {
+            const name = document.getElementById('routerPortName').value;
+            const mac = document.getElementById('routerPortMac').value;
+            const ip = document.getElementById('routerPortIp').value;
+
+            const payload = { "port-name": name, "mac-address": mac, "ip": ip };
+            const res = await apiCall(`/router/${currentRouterName}/ports`, 'POST', payload);
+
+            if (res && res.status === "created") {
+                await loadRouterDetails(currentRouterName);
+                bootstrap.Modal.getInstance(document.getElementById('createRouterPortModal')).hide();
+                document.getElementById('createRouterPortForm').reset();
+                showAlert('success', 'Router port added.');
+            }
+        }
+
+        async function deleteRouterPort(portName) {
+            if(!confirm(`Delete router port ${portName}?`)) return;
+            await apiCall(`/router/${currentRouterName}/${portName}`, 'DELETE');
+            await loadRouterDetails(currentRouterName);
+        }
+
+        async function submitCreateRouterRoute() {
+            const dest = document.getElementById('routeDestination').value;
+            const hop = document.getElementById('routeNextHop').value;
+
+            const payload = { "destination": dest, "next-hop": hop };
+            const res = await apiCall(`/router/${currentRouterName}/routes`, 'POST', payload);
+
+            if (res && res.status === "created") {
+                await loadRouterDetails(currentRouterName);
+                bootstrap.Modal.getInstance(document.getElementById('createRouterRouteModal')).hide();
+                document.getElementById('createRouterRouteForm').reset();
+                showAlert('success', 'Static route added.');
+            }
+        }
+
+        async function deleteRouterRoute(destination) {
+            if(!confirm(`Delete route to ${destination}?`)) return;
+            // Handle URL encoding for CIDR slashes
+            const encodedDest = encodeURIComponent(destination);
+            // Note: If backend expects unencoded slash, this might fail, but standard REST should handle encoded path param
+            // OR the backend route <destination> will interpret 0.0.0.0/0 as two segments. 
+            // Usually we rely on client encoding or backend receiving "path" type. 
+            // Let's try sending encoded.
+            
+            await apiCall(`/router/${currentRouterName}/${destination}`, 'DELETE');
+            await loadRouterDetails(currentRouterName);
         }
 
         // --- ACL LOGIC ---
@@ -747,7 +1166,6 @@
                 document.getElementById('acl-table-card').style.display = 'none';
                 return;
             }
-            // endpoint: GET /switch/<name>/acl
             const acls = await apiCall(`/switch/${switchName}/acl`);
             const tbody = document.getElementById('acl-tbody');
             tbody.innerHTML = '';
@@ -759,15 +1177,9 @@
                         <td>${acl.priority}</td>
                         <td>${acl.direction}</td>
                         <td class="text-monospace small" style="word-break: break-all;">${acl.match}</td>
-                        <td>
-                            <span class="badge bg-${acl.action === 'allow' || acl.action.includes('related') ? 'success' : 'danger'}">
-                                ${acl.action}
-                            </span>
-                        </td>
+                        <td><span class="badge bg-${acl.action === 'allow' || acl.action.includes('related') ? 'success' : 'danger'}">${acl.action}</span></td>
                          <td class="text-end">
-                            <button class="btn btn-sm btn-outline-danger" onclick="deleteAcl('${switchName}', '${acl.direction.replace('-lport','')}', '${acl.priority}', '${acl.match.replace(/'/g, "\\'")}')">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteAcl('${switchName}', '${acl.direction.replace('-lport','')}', '${acl.priority}', '${acl.match.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button>
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -785,56 +1197,30 @@
             const direction = document.getElementById('aclDirection').value;
             const priority = parseInt(document.getElementById('aclPriority').value);
             const action = document.getElementById('aclAction').value;
-            
             const src = document.getElementById('aclSrcIp').value;
             const dst = document.getElementById('aclDstIp').value;
             const proto = document.getElementById('aclProtocol').value;
-            const detail = document.getElementById('aclProtoDetail').value; // Port or ICMP type
+            const detail = document.getElementById('aclProtoDetail').value;
 
-            // Construct Match String
             let matchParts = [];
-            
             if(src) matchParts.push(`ip4.src==${src}`);
             if(dst) matchParts.push(`ip4.dst==${dst}`);
-
             if(proto) {
-                if(proto === 'icmp4') {
-                     if(detail) {
-                         matchParts.push(`icmp4.type==${detail}`);
-                     } else {
-                         matchParts.push(`icmp4`);
-                     }
-                } else if(proto === 'tcp') {
-                    if(detail) {
-                        matchParts.push(`tcp.dst==${detail}`);
-                    } else {
-                        matchParts.push(`tcp`);
-                    }
-                } else if(proto === 'udp') {
-                    if(detail) {
-                        matchParts.push(`udp.dst==${detail}`);
-                    } else {
-                        matchParts.push(`udp`);
-                    }
-                }
+                if(proto === 'icmp4') matchParts.push(detail ? `icmp4.type==${detail}` : `icmp4`);
+                else if(proto === 'tcp') matchParts.push(detail ? `tcp.dst==${detail}` : `tcp`);
+                else if(proto === 'udp') matchParts.push(detail ? `udp.dst==${detail}` : `udp`);
             }
             
-            if(matchParts.length === 0) {
-                 showAlert('warning', 'Please specify at least one condition (IP or Protocol).');
-                 return;
-            }
-
-            const matchStr = matchParts.join(' && ');
+            if(matchParts.length === 0) return showAlert('warning', 'Please specify at least one condition.');
 
             const payload = {
                 direction: direction,
                 priority: priority,
                 action: action,
-                match: matchStr
+                match: matchParts.join(' && ')
             };
 
             const res = await apiCall(`/switch/${switchName}/acl`, 'POST', payload);
-            
             if(res && res.status === "created") {
                 await loadAcls(switchName);
                 bootstrap.Modal.getInstance(document.getElementById('createAclModal')).hide();
@@ -845,13 +1231,7 @@
 
         async function deleteAcl(switchName, direction, priority, match) {
             if(!confirm("Delete this ACL rule?")) return;
-            
-            const payload = {
-                direction: direction,
-                priority: parseInt(priority),
-                match: match
-            };
-            
+            const payload = { direction: direction, priority: parseInt(priority), match: match };
             const res = await apiCall(`/switch/${switchName}/acl`, 'DELETE', payload);
             if(res && res.status === "deleted") {
                  await loadAcls(switchName);
@@ -865,7 +1245,6 @@
         function renderSwitches() {
             const tbody = document.getElementById('switches-tbody');
             tbody.innerHTML = '';
-            
             switches.forEach(s => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -897,11 +1276,7 @@
                 let trunkInfo = '<span class="text-muted">-</span>';
                 if(p.trunks && p.trunks.length > 0) trunkInfo = `<small>${p.trunks.join(', ')}</small>`;
 
-                let addresses = '<span class="text-muted">-</span>';
-                if(p.addresses && p.addresses.length > 0) {
-                    // Filter out 'dynamic' if present, usually addresses look like "MAC IP"
-                    addresses = p.addresses.join('<br>'); 
-                }
+                let addresses = p.addresses && p.addresses.length > 0 ? p.addresses.join('<br>') : '<span class="text-muted">-</span>';
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -920,74 +1295,115 @@
             });
         }
 
+        function renderRouters() {
+            const tbody = document.getElementById('routers-tbody');
+            tbody.innerHTML = '';
+            if (routers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">No routers found.</td></tr>';
+                return;
+            }
+
+            routers.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><input type="checkbox" class="router-check" value="${r.name}"></td>
+                    <td><strong>${r.name}</strong></td>
+                    <td><span class="status-dot status-active"></span> Active</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-warning text-dark" onclick="loadRouterDetails('${r.name}')">Manage Router</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderRouterDetails() {
+            const pBody = document.getElementById('router-ports-tbody');
+            const rBody = document.getElementById('router-routes-tbody');
+            pBody.innerHTML = '';
+            rBody.innerHTML = '';
+
+            // Ports
+            if(routerPorts.length === 0) {
+                pBody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No ports.</td></tr>';
+            } else {
+                routerPorts.forEach(p => {
+                     const addr = p.addresses && p.addresses.length > 0 ? p.addresses.join('<br>') : '-';
+                     pBody.innerHTML += `
+                        <tr>
+                            <td>${p.name}</td>
+                            <td class="small font-monospace">${addr}</td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteRouterPort('${p.name}')"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                     `;
+                });
+            }
+
+            // Routes
+            if(routerRoutes.length === 0) {
+                rBody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No static routes.</td></tr>';
+            } else {
+                routerRoutes.forEach(r => {
+                     rBody.innerHTML += `
+                        <tr>
+                            <td>${r.destination}</td>
+                            <td>${r.next_hop}</td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteRouterRoute('${r.destination}')"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                     `;
+                });
+            }
+        }
+
         function showSection(section) {
+            document.getElementById('section-overview').style.display = 'none';
             document.getElementById('section-switches').style.display = 'none';
             document.getElementById('section-ports').style.display = 'none';
+            document.getElementById('section-routers').style.display = 'none';
+            document.getElementById('section-router-details').style.display = 'none';
             document.getElementById('section-acl').style.display = 'none';
             
-            if(section === 'overview') section = 'switches';
             document.getElementById(`section-${section}`).style.display = 'block';
             
+            if (section === 'overview') loadOverview();
+            else if (section === 'switches') fetchSwitches();
+            else if (section === 'routers') fetchRouters();
+
             document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
             const activeLink = document.querySelector(`a[onclick*="${section}"]`);
             if(activeLink) activeLink.classList.add('active');
         }
 
         // --- MOCK API FOR DEMO ---
-        // Matches the structure of main.py
         function mockApi(endpoint, method, body) {
             return new Promise((resolve) => {
                 setTimeout(() => {
                     console.log(`[MOCK] ${method} ${endpoint}`, body);
                     
-                    if (endpoint === '/switch' && method === 'GET') {
-                        // Return list of strings
-                        resolve(["ls-provider", "ls-tenant-A"]);
-                    }
-                    if (method === 'POST' && endpoint === '/switch') {
-                        resolve({ "status": "created", "switch": body.name });
-                    }
-                    if (method === 'DELETE' && endpoint.startsWith('/switch/') && !endpoint.includes('/ports')) {
-                        resolve({ "status": "deleted" });
-                    }
-
-                    // Ports & VLANS
-                    if (method === 'GET' && endpoint.includes('/vlans')) {
-                        // Mock structure from main.py list_switch_vlans
-                        resolve([
-                            { "name": "ls-provider-port1", "vlan_tag": 100, "trunks": null },
-                            { "name": "ls-provider-port2", "vlan_tag": null, "trunks": [200, 300] }
-                        ]);
-                    }
-                    if (method === 'GET' && endpoint.includes('/ports')) {
-                        // Mock structure from main.py list_ports
-                        resolve([
-                            { "name": "ls-provider-port1", "addresses": ["00:aa:bb:cc:dd:01 192.168.1.1"] },
-                            { "name": "ls-provider-port2", "addresses": ["00:aa:bb:cc:dd:02 192.168.1.2"] }
-                        ]);
-                    }
-
-                    if (method === 'POST' && endpoint.includes('/ports') && !endpoint.includes('vlan')) {
-                        resolve({ "status": "created", "port": body["port-name"] });
-                    }
+                    if (endpoint === '/health') resolve({ "status": "conected", "db": "ovn-nb-mock" });
                     
-                    if (method === 'POST' && endpoint.includes('/vlan')) {
-                        resolve({ "status": "created", "vlan-tag": body.vlan });
-                    }
-                    
-                    if (method === 'GET' && endpoint.includes('/acl')) {
-                        resolve([
-                            { priority: 1001, direction: 'to-lport', match: 'ip4.src == 10.0.0.1', action: 'allow' }
-                        ]);
-                    }
-                    
-                    if (method === 'POST' && endpoint.includes('/acl')) {
-                        resolve({ "status": "created", ...body });
-                    }
+                    // Routers Mocks
+                    if (endpoint === '/router' && method === 'GET') resolve(["lr-core", "lr-edge"]);
+                    if (endpoint.includes('/router/') && endpoint.includes('/ports') && method === 'GET') 
+                         resolve([{name: "lr-port-1", addresses: ["00:00:00:00:01:00 192.168.10.1/24"]}]);
+                    if (endpoint.includes('/router/') && endpoint.includes('/routes') && method === 'GET') 
+                         resolve([{destination: "0.0.0.0/0", next_hop: "10.0.0.1"}]);
 
-                    if (method === 'DELETE' && endpoint.includes('/acl')) {
-                        resolve({ "status": "deleted" });
-                    }
+                    // Switch Mocks
+                    if (endpoint === '/switch' && method === 'GET') resolve(["ls-provider", "ls-tenant-A"]);
+                    
+                    // Generic Writes
+                    if (method === 'POST') resolve({ "status": "created", ...body });
+                    if (method === 'DELETE') resolve({ "status": "deleted" });
+
+                    // Specific reads
+                    if (endpoint.includes('/vlans')) resolve([]);
+                    if (endpoint.includes('/ports') && endpoint.includes('switch')) resolve([]);
+                    if (endpoint.includes('/acl')) resolve([]);
 
                     resolve(null);
                 }, 300);
