@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 from ovsdbapp.backend.ovs_idl import connection
 from ovsdbapp.schema.ovn_northbound import impl_idl
 
@@ -9,6 +10,7 @@ c = connection.Connection(idl=i, timeout=3)
 api = impl_idl.OvnNbApiIdlImpl(c)
 
 app = Flask(__name__)
+CORS(app)
 
 @app.route("/health", methods=["GET"])
 def health():
